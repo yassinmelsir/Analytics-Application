@@ -46,7 +46,7 @@ def workingscreen():
     
     
 def graph():
-    global ax
+    global ax, canvas
     fig = Figure(figsize=(10,8), dpi=100)
     ax = fig.add_subplot()
     sns.lineplot(x='Year', y='Births', hue='Name', data=workingdata, ax=ax)
@@ -56,21 +56,35 @@ def graph():
     canvas = FigureCanvasTkAgg(fig, master=root)
     canvas.draw()
     canvas.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    
+def regraph():
+    global ax, canvas
+    ax.clear()
+    sns.lineplot(x='Year', y='Births', hue='Name', data=workingdata, ax=ax)
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, fontsize=10)
+    plt.tight_layout()
+    canvas.draw()
 
 def numericaldata():
-    frame = tk.Frame(root)
-    frame.pack(expand=True, fill=tk.BOTH)
-    description = workingdata[statscolumn].describe()
-    breakpoint()
+    global numericaldataframe
+    numericaldataframe = tk.Frame(root)
+    numericaldataframe.pack(expand=True, fill=tk.BOTH)
+    populate_numerical_frame()
     
+def populate_numerical_frame():
+    description = workingdata[statscolumn].describe() 
     for statistic in statistics:
-        statisticframe = tk.Frame(frame, relief='groove', borderwidth=1)
+        statisticframe = tk.Frame(numericaldataframe, relief='groove', borderwidth=1)
         statisticlabel = tk.Label(statisticframe, text=statistic.capitalize()+':')
         statisticdata = tk.Label(statisticframe, text=description[statistic])
         
-        statisticframe.pack(side=tk.LEFT, fill=tk.BOTH)
+        statisticframe.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
         statisticlabel.pack(side=tk.LEFT, fill=tk.BOTH)
         statisticdata.pack(side=tk.LEFT, fill=tk.BOTH)
+        
+def repopulate_statistics():
+    for child in numericaldataframe.winfo_children(): child.destroy()
+    populate_numerical_frame()
 
 def buttons():
     global selected_visualization, checkbox_variables
@@ -108,17 +122,12 @@ def update_visualization():
 
 def update_data_range():
     global workingdata
-    selected_groups = [group for group, selected in checkbox_variables.items() if selected]
+    selected_groups = [group for group, selected in checkbox_variables.items() if selected.get()]
     workingdata = data[data[groupscolumn].isin(selected_groups)]
-    
-        
-
-  
+    repopulate_statistics()
+    regraph()
     
     
-
-
-
 root = tk.Tk()
 
 workingscreen()
