@@ -1,6 +1,7 @@
 import pandas as pd
 import tkinter as tk
 from tkinter import filedialog, messagebox
+from tkinter import ttk
 import seaborn as sns
 import matplotlib.pyplot as plt
 from pymongo import MongoClient
@@ -24,7 +25,7 @@ criteriatoremove = ['NZ02553847', 'SE213515', 'NT05399374', 'NT252675908']
 
 #extraction
 coltoextract = 'EID'
-dabstoextract =  ['C18A', 'C18F', 'C188']
+groupstoextract =  None
 columnstoextract = ['NGR', 'Site', 'Site Height', 'In-Use Ae Ht', 'In-Use ERP Total']
 
 #renaming
@@ -37,10 +38,8 @@ def on_loadfromcsv():
     global data, workingdata, filePaths
     
     filePaths = filedialog.askopenfilenames(title='Select The CSVs')
-    
-    cleandata()
-    save_to_mongo()
-    workingscreen()
+    get_data_from_csv()
+    extraction_screen()
     
 def save_to_mongo():
     global data
@@ -49,7 +48,100 @@ def save_to_mongo():
     collection.insert_many(mongodata)
     client.close()
 
-def cleandata():
+def createdataframe(frame, dataframe):
+    tree = ttk.Treeview(frame)
+    tree.pack(expand=True, side=tk.LEFT, fill=tk.BOTH)
+
+    scrollbar = ttk.Scrollbar(frame, orient='vertical', command=tree.yview)
+    scrollbar.pack(side='right', fill='y')
+    tree.configure(yscrollcommand=scrollbar.set)
+
+    tree['columns'] = list(dataframe.columns)
+    tree['show'] = 'headings'
+
+    for column in dataframe.columns:
+        tree.heading(column, text=column)
+        tree.column(column, width=100)
+
+    for index, row in dataframe.iterrows():
+        tree.insert('', index, values=list(row))
+
+def on_extractcontinue():
+    root.destroy()
+    cleandata()
+    breakpoint()
+    
+def on_backtoloadscreen():
+    for child in root.winfo_children(): child.destroy()
+    initialscreen()
+    
+def on_loadfromdatabase():
+    def on_click():
+        selection = listbox.get()
+        dialog.destroy()
+        loadfromdatabase(selection)
+    dialog = tk.Toplevel(root)
+    listbox = tk.Listbox(dialog)
+    #populate listbox with collections from database
+    selectfile = tk.Button(dialog, command=on_click)
+    
+def loadfromdatabase(selection):
+    print('load from database')
+    
+
+def extraction_screen():
+    # control buttons
+    controlbuttons = tk.Frame(root, relief='groove', borderwidth=1)
+    back = tk.Button(controlbuttons, text='Back To Load Screen', command=on_backtoloadscreen)
+    extractcontinue = tk.Button(controlbuttons, text='Extract and Continue to Cleaning', command=on_extractcontinue)
+    exit = tk.Button(controlbuttons, text='Exit', command=on_exit)
+    
+    cleaningoptions = tk.Frame(root, relief='groove', borderwidth=1)
+    
+    #extraction
+    extractFrame = tk.Frame(cleaningoptions, relief='groove', borderwidth=1)
+    groupselection = tk.Entry(extractFrame)
+    groupbox = tk.Listbox(extractFrame, selectmode=tk.MULTIPLE)
+    for group in data[coltoextract].unique(): groupbox.insert(tk.END, group)
+    
+    def extract_selected():
+        global groupstoextract
+        indices = groupbox.curselection()
+        if len(groupselection.get())>0: groupselection.delete(0,'end')
+        else:
+            groupstoextract = [groupbox.get(index) for index in indices]
+            groupselection.insert(tk.END, ','.join(groupstoextract))
+            
+    def extracted_preselected(groups):
+        global groupstoextract
+        groupselection.insert(tk.END,','.join(groups)); groupstoextract = groups
+        
+    def clear():
+        groupselection.delete(0, 'end')
+        
+    extractSelected = tk.Button(extractFrame, text='Extract Selected Groups', command=extract_selected)
+    extractPreselected = tk.Button(extractFrame, text='Extract C18A, C18F and C188', command=lambda: extracted_preselected(['C18A', 'C18F', 'C188']))
+    extractAll = tk.Button(extractFrame, text='Extract All', command=lambda: extracted_preselected(data[coltoextract].unique()))
+    clearSelected = tk.Button(extractFrame, text='Clear Selections', command=clear)   
+    
+    
+    controlbuttons.pack(fill=tk.BOTH)
+    back.pack(fill=tk.BOTH, side=tk.LEFT)
+    extractcontinue.pack(fill=tk.BOTH, side=tk.LEFT)
+    exit.pack(fill=tk.BOTH, side=tk.RIGHT)
+    
+    cleaningoptions.pack(fill=tk.BOTH)
+    
+    groupselection.pack(fill=tk.BOTH)
+    extractFrame.pack(expand=True,fill=tk.BOTH, side=tk.LEFT)
+    groupbox.pack(fill=tk.BOTH)
+    extractSelected.pack(fill=tk.BOTH)
+    extractPreselected.pack(fill=tk.BOTH)
+    extractAll.pack(fill=tk.BOTH)
+    clearSelected.pack(fill=tk.BOTH)
+    
+def get_data_from_csv():
+    global data
     # global data, workingdata, filePaths
     # dataframes = [pd.read_csv(filePath, encoding='latin1') for filePath in filePaths]
     # for dataframe in dataframes:
@@ -58,15 +150,19 @@ def cleandata():
     antenna, params = pd.read_csv('/Users/yme/Code/AdvancedProgramming/SummativeAssessment/TxAntennaDAB.csv', encoding='latin1'), pd.read_csv('/Users/yme/Code/AdvancedProgramming/SummativeAssessment/TxParamsDAB.csv', encoding='latin1')
     df = pd.merge(params, antenna, on='id', how='left') # join the two dataframes on antenna/params id to make data easier to work with
     df.columns = [col.strip() for col in df.columns] # format columns names
+    data = df
     
+    
+def cleandata():
+    global data, workingdata
     #Client Requests
     # 1. remove NGRS NZ02553847, SE213515, NT05399374 and NT252675908 from possible outputs
-    df = df[~df[coltofilter].isin(criteriatoremove)] # filter out the NGRS: NZ02553847, SE213515, NT05399374 and NT252675908
+    data = data[~data[coltofilter].isin(criteriatoremove)] # filter out the NGRS: NZ02553847, SE213515, NT05399374 and NT252675908
     
     # 2. The ‘EID’ column contains information of the DAB multiplex block E.g C19A. 
     # Extract this out into a new column, one for each of the following DAB multiplexes:
     # a.all DAB multiplexes, that are , C18A, C18F, C188
-    extracted = df[df[coltoextract].isin(dabstoextract)] # extract multiplexes
+    extracted = data[data[coltoextract].isin(groupstoextract)] # extract multiplexes
     extracted.set_index(coltoextract, inplace=True) # groupd data by multiplex
     
     # b.join each category, C18A, C18F, C188 to the ‘ NGR’ that signifies the DAB stations location to the following: 
@@ -76,8 +172,7 @@ def cleandata():
     # c.Please note that: In-Use Ae Ht, In-Use ERP Total  will need the following new header after extraction: 
     # Aerial height(m), Power(kW) respectively.
     extracted.rename(columnstorename, inplace=True)    
-    
-    
+    workingdata = extracted
     
     
     
@@ -204,11 +299,12 @@ def update_data_range():
     regraph_information() if selected_visualization.get() == 'Information' else regraph_correlation()    
     
     
-# root = tk.Tk()
+root = tk.Tk()
 
-cleandata()
+get_data_from_csv()
+extraction_screen()
 
-# root.mainloop()
+root.mainloop()
 
 
 
