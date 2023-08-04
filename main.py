@@ -18,6 +18,18 @@ statscolumn, groupscolumn, visualizations, statistics = 'Births', 'Sex', ['Infor
 filePath = '/Users/yme/Code/AdvancedProgramming/SummativeAssessment/top_3_names_per_sex.csv'
 data, workingdata = pd.read_csv(filePath), pd.read_csv(filePath)
 
+#filtering
+coltofilter = 'NGR'
+criteriatoremove = ['NZ02553847', 'SE213515', 'NT05399374', 'NT252675908']
+
+#extraction
+coltoextract = 'EID'
+dabstoextract =  ['C18A', 'C18F', 'C188']
+columnstoextract = ['NGR', 'Site', 'Site Height', 'In-Use Ae Ht', 'In-Use ERP Total']
+
+#renaming
+columnstorename = {'In-Use Ae Ht': 'Aerial Height(m)', 'In-Use ERP Total': 'Power(kW)'}
+
 def on_exit():
     root.destroy()
     
@@ -44,7 +56,29 @@ def cleandata():
     #     if 'NGR' in dataframe.columns: antennas = dataframe
     #     if 'EID' in dataframe.columns: params = dataframe
     antenna, params = pd.read_csv('/Users/yme/Code/AdvancedProgramming/SummativeAssessment/TxAntennaDAB.csv', encoding='latin1'), pd.read_csv('/Users/yme/Code/AdvancedProgramming/SummativeAssessment/TxParamsDAB.csv', encoding='latin1')
-    breakpoint()
+    df = pd.merge(params, antenna, on='id', how='left') # join the two dataframes on antenna/params id to make data easier to work with
+    df.columns = [col.strip() for col in df.columns] # format columns names
+    
+    #Client Requests
+    # 1. remove NGRS NZ02553847, SE213515, NT05399374 and NT252675908 from possible outputs
+    df = df[~df[coltofilter].isin(criteriatoremove)] # filter out the NGRS: NZ02553847, SE213515, NT05399374 and NT252675908
+    
+    # 2. The ‘EID’ column contains information of the DAB multiplex block E.g C19A. 
+    # Extract this out into a new column, one for each of the following DAB multiplexes:
+    # a.all DAB multiplexes, that are , C18A, C18F, C188
+    extracted = df[df[coltoextract].isin(dabstoextract)] # extract multiplexes
+    extracted.set_index(coltoextract, inplace=True) # groupd data by multiplex
+    
+    # b.join each category, C18A, C18F, C188 to the ‘ NGR’ that signifies the DAB stations location to the following: 
+    #  ‘Site’, ‘Site Height, In-Use Ae Ht, In-Use ERP Total
+    extracted = extracted[columnstoextract] # reduce to desired columns
+    
+    # c.Please note that: In-Use Ae Ht, In-Use ERP Total  will need the following new header after extraction: 
+    # Aerial height(m), Power(kW) respectively.
+    extracted.rename(columnstorename, inplace=True)    
+    
+    
+    
     
     
 def connect_to_server():
@@ -170,11 +204,11 @@ def update_data_range():
     regraph_information() if selected_visualization.get() == 'Information' else regraph_correlation()    
     
     
-root = tk.Tk()
+# root = tk.Tk()
 
 cleandata()
 
-root.mainloop()
+# root.mainloop()
 
 
 
