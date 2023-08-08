@@ -96,23 +96,20 @@ def extraction_screen():
     
 def cleaning_screen():
 
-    def on_reset():
+    def reload():
         global root
         for child in root.winfo_children(): child.destroy()
-        extract_data()
         cleaning_screen()
+
+    def on_reset():
+        extract_data()
+        reload()
         
     def on_apply_preset():
         global root
         clean_data()
         for child in root.winfo_children(): child.destroy()
         visualization_screen()
-
-    def on_fill():
-        print('')
-        
-    def on_apply_delimiter():
-        print('')
         
     global data, workingdata
     
@@ -155,18 +152,40 @@ def cleaning_screen():
     columns.pack(side=tk.LEFT,fill=tk.BOTH)
     columns_box_frame = tk.Frame(columns)
     columns_box_frame.pack(fill=tk.BOTH)
-    
-    columnsbox = tk.Listbox(columns, selectmode=tk.MULTIPLE)
-    for column in workingdata.columns: columnsbox.insert(tk.END, column)
+    colums_label = tk.Label(columns_box_frame,text='Select a Column to Clean')
+    colums_label.pack(fill=tk.BOTH)
+    columnsbox = tk.Listbox(columns)
+    for column, dytype in workingdata.dtypes.items(): columnsbox.insert(tk.END, f'{column}: {dytype}')
     columnsbox.pack(fill=tk.BOTH)
     
-    fill = tk.Frame(columns)
-    fill.pack(side=tk.LEFT)
+    def on_fill():
+        fill, column = selected_fill.get(), columnsbox.get(columnsbox.curselection())
+        if isinstance(column, str): 
+            na = 0 if fill == 1 else workingdata[column].mode().iloc[0]
+            workingdata[column] = workingdata[column].fillna()
+        reload()
+        
+    def on_apply_delimiter():
+
+        reload()
+        
+    def on_set_type():
+
+        reload()
+        
+    def on_set_name():
+
+        reload()
+    
+    fill_frame = tk.Frame(columns)
+    fill_frame.pack(side=tk.LEFT)
+    fill_label = tk.Label(fill_frame, text='Select Method to Fill Missing Values in Column')
+    fill_label.pack()
     selected_fill = tk.IntVar()
-    for index, button_text in enumerate(['Mode Imputation', 'Fill With 0']):
-        radiobutton = tk.Radiobutton(fill, text=button_text, variable=selected_fill, value=index)
+    for button_text in ['Mode Imputation', 'Fill With 0']:
+        radiobutton = tk.Radiobutton(fill_frame, text=button_text, variable=selected_fill, value=button_text)
         radiobutton.pack()
-    fill_blanks = tk.Button(fill,text='Fill Column Blanks', command=on_fill)    
+    fill_blanks = tk.Button(fill_frame,text='Fill Column Blanks', command=on_fill)    
     fill_blanks.pack()
     
     delimiter_frame = tk.Frame(columns)
@@ -178,7 +197,31 @@ def cleaning_screen():
     apply_delimiter = tk.Button(delimiter_frame, text='Apply Delimiter', command=on_apply_delimiter)
     apply_delimiter.pack()
     
-    # text entries for delimiter
+    # finish delimiter
+    
+    # finish fills
+    
+    # finish setting type of column
+      
+    coltype_frame = tk.Frame(columns)
+    coltype_frame.pack(side=tk.LEFT)
+    coltype_label = tk.Label(coltype_frame, text='Change Datatype of Column Below')
+    coltype_label.pack()
+    selected_coltype = tk.StringVar()
+    for button_text in ['Integer', 'Float', 'Object (String)']:
+        radiobutton = tk.Radiobutton(coltype_frame, text=button_text, variable=selected_coltype, value=button_text)
+        radiobutton.pack()
+    set_coltype = tk.Button(coltype_frame,text='Set Column Type', command=on_set_type)    
+    set_coltype.pack()
+    
+    rename_frame = tk.Frame(columns)
+    rename_frame.pack(side=tk.LEFT)
+    rename_label = tk.Label(rename_frame, text='Enter a New Name for the Column')
+    rename_label.pack()
+    new_name = tk.Entry(rename_frame)
+    new_name.pack()
+    apply_delimiter = tk.Button(rename_frame, text='Apply New Name', command=on_set_name)
+    apply_delimiter.pack()
             
     
 def on_continue_and_save():
