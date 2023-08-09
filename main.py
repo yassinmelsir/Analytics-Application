@@ -32,6 +32,11 @@ columnstoextract = ['EID', 'NGR', 'Site', 'Site Height', 'In-Use Ae Ht', 'In-Use
 #renaming
 columnstorename = {'In-Use Ae Ht': 'Aerial Height(m)', 'In-Use ERP Total': 'Power(kW)'}
 
+#cleaning
+filltypes = ['Mode Imputation', 'Fill With 0'] 
+coltypes = ['Int', 'Float', 'Str']
+
+
 #screens
 def initial_screen():
     loadfromcsv = tk.Button(root,text='Load from CSV', command=on_loadfromcsv)
@@ -119,10 +124,13 @@ def cleaning_screen():
     exit = tk.Button(buttons, text='Exit', command=on_exit)
     exit.pack(side=tk.RIGHT, fill=tk.BOTH)
     
-    continue_w_save = tk.Button(buttons,text='Continue and Save', command=on_continue_and_save)
+    continue_preset_save = tk.Button(buttons,text='Apply Preset Cleaning, Save and Continue to Visualization', command=on_continue_and_save)
+    continue_preset_save.pack(side=tk.RIGHT, fill=tk.BOTH)
+    
+    continue_w_save = tk.Button(buttons,text='Save and Continue to Visualization', command=on_continue_and_save)
     continue_w_save.pack(side=tk.RIGHT, fill=tk.BOTH)
     
-    continue_wo_save = tk.Button(buttons,text='Continue', command=on_continue_to_analysis)
+    continue_wo_save = tk.Button(buttons,text='Continue to Visualization', command=on_continue_to_analysis)
     continue_wo_save.pack(side=tk.RIGHT, fill=tk.BOTH)
     
     reset = tk.Button(buttons, text='Reset', command=on_reset)
@@ -131,24 +139,23 @@ def cleaning_screen():
     apply_preset = tk.Button(buttons, text='Apply Preset Cleaning' ,command=on_apply_preset)
     apply_preset.pack(side=tk.LEFT, fill=tk.BOTH)
     
+    dataframe = tk.Frame(root)
+    dataframe.pack(expand=True, fill=tk.BOTH)
+    dataframe_view(dataframe, workingdata)
+    
     def on_delete_rows():
         global workingdata, root
         selected_rows = tree.selection()
         for row in selected_rows: tree.delete(row)
         workingdata = workingdata[~workingdata['NGR'].isin(selected_rows)]
     
-    delete_rows = tk.Button(buttons, text='Delete Selected Rows', command=on_delete_rows)
+    delete_rows = tk.Button(dataframe, text='Delete Selected Rows', command=on_delete_rows)
     delete_rows.pack(side=tk.LEFT)
-    
-    dataframe = tk.Frame(root)
-    dataframe.pack(expand=True, fill=tk.BOTH)
-    dataframe_view(dataframe, workingdata)
     
     tools = tk.Frame(root)
     tools.pack(expand=True, fill=tk.BOTH)
-    
-    
-    columns = tk.Frame(tools, padx=5)
+        
+    columns = tk.Frame(tools, relief='groove', borderwidth=1)
     columns.pack(side=tk.LEFT,fill=tk.BOTH)
     columns_box_frame = tk.Frame(columns)
     columns_box_frame.pack(fill=tk.BOTH)
@@ -161,68 +168,81 @@ def cleaning_screen():
     def on_fill():
         fill, column = selected_fill.get(), columnsbox.get(columnsbox.curselection())
         if isinstance(column, str): 
-            na = 0 if fill == 1 else workingdata[column].mode().iloc[0]
+            na = 0 if fill == 'Fill With 0' else workingdata[column].mode().iloc[0]
             workingdata[column] = workingdata[column].fillna()
         reload()
         
-    def on_apply_delimiter():
-
-        reload()
-        
-    def on_set_type():
-
-        reload()
-        
-    def on_set_name():
-
-        reload()
-    
-    fill_frame = tk.Frame(columns)
-    fill_frame.pack(side=tk.LEFT)
+    fill_frame = tk.Frame(tools, relief='groove', borderwidth=1)
+    fill_frame.pack(side=tk.LEFT, anchor='n')
     fill_label = tk.Label(fill_frame, text='Select Method to Fill Missing Values in Column')
     fill_label.pack()
-    selected_fill = tk.IntVar()
-    for button_text in ['Mode Imputation', 'Fill With 0']:
+    selected_fill = tk.StringVar()
+    selected_fill.set(filltypes[0])
+    for button_text in filltypes:
         radiobutton = tk.Radiobutton(fill_frame, text=button_text, variable=selected_fill, value=button_text)
-        radiobutton.pack()
+        radiobutton.pack(anchor='w')
     fill_blanks = tk.Button(fill_frame,text='Fill Column Blanks', command=on_fill)    
-    fill_blanks.pack()
+    fill_blanks.pack(anchor='w')
     
-    delimiter_frame = tk.Frame(columns)
-    delimiter_frame.pack(side=tk.LEFT)
-    delimiter_label = tk.Label(delimiter_frame, text='Enter Delimiter to Parse Columns Values')
-    delimiter_label.pack()
-    delimiter = tk.Entry(delimiter_frame)
-    delimiter.pack()
-    apply_delimiter = tk.Button(delimiter_frame, text='Apply Delimiter', command=on_apply_delimiter)
-    apply_delimiter.pack()
+    def on_replace():
+        selection_index = columnsbox.curselection()
+        if selection_index:
+            column = workingdata.columns.values[selection_index[0]]
+            workingdata[column] = workingdata[column].apply(lambda x: x.replace(f'{to_replace.get()}',f'{replace_with.get()}'))
+            print(workingdata[column])
+        reload()
     
-    # finish delimiter
+    replacement_frame = tk.Frame(tools, relief='groove', borderwidth=1)
+    replacement_frame.pack(side=tk.LEFT, anchor='n')
+    replacement_label = tk.Label(replacement_frame, text='Select a Column to Parse Below')
+    replacement_label.pack()
+    to_replace_label= tk.Label(replacement_frame, text='Enter Value to Mass Replace')
+    to_replace_label.pack(anchor='w')
+    to_replace = tk.Entry(replacement_frame)
+    to_replace.pack(anchor='w')
+    replace_with_label = tk.Label(replacement_frame, text='Enter Value to Mass Replace With')
+    replace_with_label.pack(anchor='w')
+    replace_with = tk.Entry(replacement_frame)
+    replace_with.pack(anchor='w')
+    replace = tk.Button(replacement_frame, text='Apply Change', command=on_replace)
+    replace.pack(anchor='w')
     
-    # finish fills
-    
-    # finish setting type of column
-      
-    coltype_frame = tk.Frame(columns)
-    coltype_frame.pack(side=tk.LEFT)
+    def on_set_type():
+        selection_index = columnsbox.curselection()
+        if selection_index:
+            column = workingdata.columns.values[selection_index[0]]
+            workingdata[column] = workingdata[column].astype(selected_coltype.get().lower())    
+            print(workingdata.dtypes())
+        reload()
+        
+    coltype_frame = tk.Frame(tools, relief='groove', borderwidth=1)
+    coltype_frame.pack(side=tk.LEFT, anchor='n')
     coltype_label = tk.Label(coltype_frame, text='Change Datatype of Column Below')
     coltype_label.pack()
     selected_coltype = tk.StringVar()
-    for button_text in ['Integer', 'Float', 'Object (String)']:
+    selected_coltype.set(coltypes[0])
+    for button_text in coltypes:
         radiobutton = tk.Radiobutton(coltype_frame, text=button_text, variable=selected_coltype, value=button_text)
-        radiobutton.pack()
+        radiobutton.pack(anchor='w')
     set_coltype = tk.Button(coltype_frame,text='Set Column Type', command=on_set_type)    
-    set_coltype.pack()
+    set_coltype.pack(anchor='w')
     
-    rename_frame = tk.Frame(columns)
-    rename_frame.pack(side=tk.LEFT)
+    def on_set_name():
+        selection_index = columnsbox.curselection()
+        if selection_index:
+            column, name = workingdata.columns.values[selection_index[0]], new_name.get()
+            workingdata.rename(columns={column:name}, inplace=True)
+            print(workingdata.columns)
+        reload()
+    
+    rename_frame = tk.Frame(tools, relief='groove', borderwidth=1)
+    rename_frame.pack(side=tk.LEFT, anchor='n')
     rename_label = tk.Label(rename_frame, text='Enter a New Name for the Column')
     rename_label.pack()
     new_name = tk.Entry(rename_frame)
-    new_name.pack()
+    new_name.pack(anchor='w')
     apply_delimiter = tk.Button(rename_frame, text='Apply New Name', command=on_set_name)
-    apply_delimiter.pack()
-            
+    apply_delimiter.pack(anchor='w')
     
 def on_continue_and_save():
     def on_click():
@@ -469,18 +489,30 @@ def extract_data():
     # b.join each category, C18A, C18F, C188 to the ‘ NGR’ that signifies the DAB stations location to the following: 
     #  ‘Site’, ‘Site Height, In-Use Ae Ht, In-Use ERP Total
     extracted = extracted[columnstoextract] # reduce to desired columns
-    
-    # c.Please note that: In-Use Ae Ht, In-Use ERP Total  will need the following new header after extraction: 
+    #c.Please note that: In-Use Ae Ht, In-Use ERP Total  will need the following new header after extraction: 
     # Aerial height(m), Power(kW) respectively.
-    extracted.rename(columnstorename, inplace=True)    
+    #Done in Cleaning Screen Logic
+    
     workingdata = extracted
 
 def clean_data():
      # 1. remove NGRS NZ02553847, SE213515, NT05399374 and NT252675908 from possible outputs
     cleaned = cleaned[~data[coltofilter].isin(criteriatoremove)] # filter out the NGRS: NZ02553847, SE213515, NT05399374 and NT252675908
+    cleaned.rename({},inplace=True)
+    # 2. c.Please note that: In-Use Ae Ht, In-Use ERP Total  will need the following new header after extraction: 
+    # Aerial height(m), Power(kW) respectively.
+    cleaned.rename(columns=columnstorename, inplace=True)    
+
+    # remove anomalies, and reclassify
+    column_to_parse = 'Power(kW)'
+    cleaned[column_to_parse] = cleaned[column_to_parse].apply(lambda x: x.replace(',',''))
+    cleaned[column_to_parse] = cleaned[column_to_parse].apply(lambda x: x.replace('.',''))
+    cleaned[column_to_parse] = cleaned[column_to_parse].astype(int)
+    
     # fill blanks
-    # parse columns
-    # assign integer values 
+    
+    #rename colums    
+
     workingdata = cleaned
     
 
