@@ -9,7 +9,7 @@ from matplotlib.figure import Figure
 
 from screen import Screen
 
-from _config import visualizations
+from _config import visualizations, statistics, statscolumn
 
 class Analysis(Screen):
     def __init__(self, root, controller, data):
@@ -38,45 +38,42 @@ class Analysis(Screen):
         selected_visualization = tk.StringVar()
         selected_visualization.set(graph_type)
         for visualization in visualizations: 
-            radio_button = tk.Radiobutton(radiobutton_frame,text=visualization,variable=selected_visualization, value=visualization, command=update_visualization)
+            radio_button = tk.Radiobutton(radiobutton_frame,text=visualization,variable=selected_visualization, value=visualization, command=self.update_visualization)
             radio_button.pack(side=tk.LEFT,fill=tk.BOTH)
         
         checkboxlabel = tk.Label(checkbox_frame, text='Groups: ')
         checkboxlabel.pack(side=tk.LEFT,fill=tk.BOTH)
-        groups, checkbox_variables = groupstoextract, {}
+        groups, checkbox_variables = self.data.get_groupstoextract(), {}
         
         for group in groups:
             checkbox_variable = tk.BooleanVar(value=True)
             checkbox_variables[group] = checkbox_variable
             
-            checkbox = tk.Checkbutton(checkbox_frame, text=group, variable=checkbox_variable, command=update_data_range)
+            checkbox = tk.Checkbutton(checkbox_frame, text=group, variable=checkbox_variable, command=self.update_data_range)
             checkbox.pack(side=tk.LEFT,fill=tk.BOTH)
             
-        exit = tk.Button(frame, text='Exit', command=on_exit)
+        exit = tk.Button(frame, text='Exit', command=self.on_exit)
         exit.pack(side=tk.RIGHT, fill=tk.BOTH)
         
-        load = tk.Button(frame,text='Load from Database', command=on_load_from_database)
+        load = tk.Button(frame,text='Load from Database', command=self.on_load_from_database)
         load.pack(side=tk.RIGHT, fill=tk.BOTH)
         
-        save = tk.Button(frame,text='Save to Database', command=on_save_to_database)
+        save = tk.Button(frame,text='Save to Database', command=self.on_save_to_database)
         save.pack(side=tk.RIGHT, fill=tk.BOTH)
         
     def update_visualization(self):
         global graph_type
         graph_type = selected_visualization.get()
-        destroy_children()
-        analysis_screen()
+        self.controller.show_visualization()
 
     def update_data_range(self):
         global workingdata, selected_visualization
         selected_groups = [group for group, selected in checkbox_variables.items() if selected.get()]
-        workingdata = workingdata[data[groupscolumn].isin(selected_groups)]
-        destroy_children()
-        analysis_screen()
+        self.workingdata = self.workingdata[self.data.get_data()['EID'].isin(selected_groups)]
+        self.controller.show_analysis()
 
     def information_graph(self):
         sns.scatterplot(x='Longitude', y='Latitude', hue='EID', data=graph_data, ax=ax)
-    
         for _, row in graph_data.iterrows(): 
             label = row['Site'] + '\n' + str(row['Freq.']) + '\n' + row['Block'] + '\n' + row['Stations']
             ax.text(row['Longitude'], row['Latitude'], label)
@@ -87,7 +84,7 @@ class Analysis(Screen):
         global workingdata, ax, canvas, graph_data
         fig = Figure(figsize=(10,8), dpi=100)
         ax = fig.add_subplot()
-        information_graph()
+        self.information_graph()
         canvas = FigureCanvasTkAgg(fig, master=self.root)
         canvas.draw()
         canvas.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -95,7 +92,7 @@ class Analysis(Screen):
     def regraph_information(self):
         global ax, canvas, graph_data
         ax.clear()
-        information_graph()
+        self.information_graph()
         canvas.draw()
         
     def graph_correlation(self):
@@ -165,12 +162,12 @@ class Analysis(Screen):
         
 
     def generate_statistics_widget(self):
-        description_year, description_height = compute_stats()
-        statistics_frame(description_year, 'Year'), statistics_frame(description_height, 'Height')
+        description_year, description_height = self.compute_stats()
+        self.statistics_frame(description_year, 'Year'), self.statistics_frame(description_height, 'Height')
         print('Description Year', description_year)
         print('Description Height', description_height)
         
-    def statistics_frame(description, constraint):
+    def statistics_frame(self,description, constraint):
         global numericaldataframe
         numericaldataframe = tk.Frame(self.root)
         numericaldataframe.pack(expand=True, fill=tk.BOTH)

@@ -4,10 +4,11 @@ from _config import columnstoextract, coltofilter, criteriatoremove, columnstore
 
 class Data():
     def __init__(self, server_address, database_name):
-        self.data = None
-        self.working_data = None
         self.server_address = server_address
         self.database_name = database_name
+        self.data = None
+        self.working_data = None
+        
         self.groupstoextract = None
         
     def get_data(self):
@@ -18,6 +19,12 @@ class Data():
     
     def set_working_data(self, working_data):
         self.working_data = working_data
+        
+    def get_groupstoextract(self):
+        return self.groupstoextract
+    
+    def set_groupstoextract(self, groupstoextract):
+        self.groupstoextract = groupstoextract
     
     def get_collection(self,collectionName):
         client = MongoClient(self.server_address)
@@ -55,8 +62,7 @@ class Data():
         df.columns = [col.strip() for col in df.columns] # format columns names
         self.data = df
         
-    def extract_data(self,coltoextract,groupstoextract):
-        self.groupstoextract = groupstoextract
+    def extract_data(self,):
         #Client Requests
         # 1. remove NGRS NZ02553847, SE213515, NT05399374 and NT252675908 from possible outputs
         # Done in Cleaning Screen Logic
@@ -65,7 +71,7 @@ class Data():
         # Extract this out into a new column, one for each of the following DAB multiplexes:
         # a.all DAB multiplexes, that are , C18A, C18F, C188
         # Can be done by selecting extract C18A, C18F, C188 in the extract screen
-        extracted = self.data[self.data[coltoextract].isin(groupstoextract)] # extract multiplexes
+        extracted = self.data[self.data['EID'].isin(self.groupstoextract)] # extract multiplexes
         # extracted.set_index(coltoextract, inplace=True) # groupd self.data by multiplex
         
         # b.join each category, C18A, C18F, C188 to the ‘ NGR’ that signifies the DAB stations location to the following: 
@@ -75,7 +81,23 @@ class Data():
         # Aerial height(m), Power(kW) respectively.
         #Done in Cleaning Screen Logic
         self.working_data = extracted
+    
+    def delete_rows(self,selected_rows):
+        self.working_data = self.working_data[~self.working_data['NGR'].isin(selected_rows)]
         
+    def fill(self, fill, column):
+        na = 0 if fill == 'Fill With 0' else self.working_data[column].mode().iloc[0]
+        self.working_data[column] = self.working_data[column].fillna(na)
+        
+    def replace(self, column, to_replace, replace_with):
+        self.working_data[column] = self.working_data[column].apply(lambda x: x.replace(f'{to_replace}',f'{replace_with}'))
+        
+    def set_type(self, column, selected_coltype):
+        self.working_data[column] = self.working_data[column].astype(selected_coltype.lower())    
+    
+    def set_name(self, name, column):
+        self.working_data.rename(columns={column:name}, inplace=True)
+
     def preset_clean_data(self):
         
         # 1. remove NGRS NZ02553847, SE213515, NT05399374 and NT252665908 from possible outputs
