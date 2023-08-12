@@ -12,8 +12,6 @@ class Extraction(Screen):
 
         self.controlbuttons()
         
-        
-        
         #extraction
         extraction = tk.Frame(root, relief='groove', borderwidth=1)
         self.extractFrame = tk.Frame(extraction, relief='groove', borderwidth=1)
