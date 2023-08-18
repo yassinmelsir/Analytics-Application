@@ -9,7 +9,7 @@ from matplotlib.figure import Figure
 
 from screen import Screen
 
-from _config import visualizations, statistics, year_constraint, height_constraint, stats_column, graph_type, label_columns
+from _config import visualizations, statistics, stats_column, graph_type, label_columns
 
 class Analysis(Screen):
     def __init__(self, controller):
@@ -31,8 +31,15 @@ class Analysis(Screen):
         
         radiobutton_frame = tk.Frame(frame, relief='groove', borderwidth=1)
         radiobutton_frame.pack(side=tk.LEFT,fill=tk.BOTH)
+        
         checkbox_frame = tk.Frame(frame, relief='groove', borderwidth=1)
         checkbox_frame.pack(side=tk.LEFT,fill=tk.BOTH)
+        
+        year_range_frame = tk.Frame(frame, relief='groove', borderwidth=1)
+        year_range_frame.pack(side=tk.LEFT,fill=tk.BOTH)
+        
+        height_range_frame = tk.Frame(frame, relief='groove', borderwidth=1)
+        height_range_frame.pack(side=tk.LEFT,fill=tk.BOTH)
         
         radio_label = tk.Label(radiobutton_frame, text='Visualizations: ')
         radio_label.pack(side=tk.LEFT,fill=tk.BOTH)
@@ -52,6 +59,32 @@ class Analysis(Screen):
             
             checkbox = tk.Checkbutton(checkbox_frame, text=group, variable=checkbox_variable, command=self.update_data_range)
             checkbox.pack(side=tk.LEFT,fill=tk.BOTH)
+            
+        def on_year_change(value):
+            year_constraint.set(value)
+        
+        def on_height_change(value):
+            height_constraint.set(value)
+        
+        global year_constraint, height_constraint
+        year_label = tk.Label(radiobutton_frame, text='Year Range: ')
+        year_label.pack(side=tk.LEFT,fill=tk.BOTH)
+        year_range_bar = tk.Scale(year_range_frame, from_=self.working_data['Date'].dt.year.min(), to=self.working_data['Date'].dt.year.max(), orient="horizontal", command=on_year_change)
+        year_range_bar.pack(side=tk.LEFT,fill=tk.BOTH)
+        year_constraint = tk.IntVar()
+        
+        height_label = tk.Label(radiobutton_frame, text='Height Range: ')
+        height_label.pack(side=tk.LEFT,fill=tk.BOTH)
+        height_range_bar = tk.Scale(height_range_frame, from_=self.working_data['Site Height'].min(), to=self.working_data['Site Height'].max(), orient="horizontal", command=on_height_change)
+        height_range_bar.pack(side=tk.LEFT,fill=tk.BOTH)
+        height_constraint = tk.IntVar()
+        
+        range_button = tk.Button(frame, text='Apply New Statistic Range', command=self.update_statistics)
+        range_button.pack(side=tk.LEFT,fill=tk.BOTH)
+        
+        # Label to display the updated value
+        updated_value = tk.StringVar()
+        updated_value.set("Updated Value: 0")
             
         exit = tk.Button(frame, text='Exit', command=self.controller.exit)
         exit.pack(side=tk.RIGHT, fill=tk.BOTH)
@@ -125,6 +158,13 @@ class Analysis(Screen):
         global graph_type
         graph_type = selected_visualization.get()
         self.regraph()
+        
+    def update_statistics(self):
+        for child in height_frame.winfo_children(): child.destroy()
+        for child in year_frame.winfo_children(): child.destroy()
+        description_year, description_height = self.compute_stats()
+        self.fill_statistics(year_frame,description_year,'Year')
+        self.fill_statistics(height_frame,description_height,'Height')
 
     def update_data_range(self):
         global eid_df, label_df
@@ -135,11 +175,8 @@ class Analysis(Screen):
         else: self.working_data = pd.DataFrame(columns=self.working_data.columns)
         self.get_graph_data()
         self.regraph()
-        for child in height_frame.winfo_children(): child.destroy()
-        for child in year_frame.winfo_children(): child.destroy()
-        description_year, description_height= self.compute_stats()
-        self.fill_statistics(year_frame,description_year,'Year')
-        self.fill_statistics(height_frame,description_height,'Height')
+        self.update_statistics()
+        
 
     def information_graph(self):
         # plot x:longitude-y:latitude-l:site-c:multiplex 
@@ -223,18 +260,19 @@ class Analysis(Screen):
         self.fill_statistics(height_frame,description_height,'Height')
         
     def fill_statistics(self,frame,description,constraint):
-            constraint_frame = tk.Frame(frame, relief='groove', borderwidth=1)
-            constraint_label = tk.Label(constraint_frame, text=f'{constraint} Constraint: ')
-            constraint_label.pack(side=tk.LEFT, fill=tk.BOTH), constraint_frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-            
-            for statistic in statistics:
-                statisticframe = tk.Frame(frame, relief='groove', borderwidth=1)
-                statisticlabel = tk.Label(statisticframe, text=statistic.capitalize() + ': ' + str(description[statistic]))
-                statisticlabel.pack(side=tk.LEFT, fill=tk.BOTH), statisticframe.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+        constraint_frame = tk.Frame(frame, relief='groove', borderwidth=1)
+        constraint_label = tk.Label(constraint_frame, text=f'{constraint} Constraint Statistics: ')
+        
+        constraint_frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+        constraint_label.pack(side=tk.LEFT, fill=tk.BOTH)
+        
+        for statistic in statistics:
+            statisticframe = tk.Frame(frame, relief='groove', borderwidth=1)
+            statisticlabel = tk.Label(statisticframe, text=statistic.capitalize() + ': ' + str(description[statistic]))
+            statisticlabel.pack(side=tk.LEFT, fill=tk.BOTH), statisticframe.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
                 
     def compute_stats(self):
-        self.working_data['Date'] = pd.to_datetime(self.working_data['Date'].copy(), format='%d/%m/%Y').copy()
-        filter_by_year, filter_by_height = self.working_data[self.working_data['Date'].dt.year >= year_constraint], self.working_data[self.working_data['Site Height'] >= height_constraint]
+        filter_by_year, filter_by_height = self.working_data[self.working_data['Date'].dt.year >= year_constraint.get()], self.working_data[self.working_data['Site Height'] >= height_constraint.get()]
         print(filter_by_year[stats_column].describe(), filter_by_height[stats_column].describe())
         return filter_by_year[stats_column].describe(), filter_by_height[stats_column].describe()
     

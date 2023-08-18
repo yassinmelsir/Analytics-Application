@@ -82,6 +82,10 @@ class Data():
         #c.Please note that: In-Use Ae Ht, In-Use ERP Total  will need the following new header after extraction: 
         # Aerial height(m), Power(kW) respectively.
         #Done in Cleaning Screen Logic
+        
+        #Set Date to Datetime
+        extracted['Date'] = pd.to_datetime(extracted['Date'].copy(), format='%d/%m/%Y').copy()
+        
         self.working_data = extracted
     
     def delete_rows(self,selected_rows):

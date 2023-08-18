@@ -29,7 +29,7 @@ col_types = ['Int', 'Float', 'Str']
 
 #stats
 stats_column, groups_column, visualizations, statistics = 'Power(kW)', 'EID', ['Information','Correlation'], ['mean', 'std', 'min']
-year_constraint, height_constraint = 2001, 75
+year_constraint, height_constraint = None, None
 
 #graphs
 graph_type = 'Information'
