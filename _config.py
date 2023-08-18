@@ -38,4 +38,6 @@ graph_type = 'Information'
 next_screen = 'initial'
 
 #analysis
-selected_groups = None
+label_columns = [
+        'EID', 'NGR', 'Site','Longitude/Latitude', 'Site Height', 'Aerial Height(m)',
+        'Power(kW)', 'Freq.', 'Block']

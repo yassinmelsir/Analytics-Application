@@ -1,6 +1,6 @@
 import pandas as pd
 from pymongo import MongoClient
-from _config import columns_to_extract, col_to_filter, criteria_to_remove, columns_to_rename
+from _config import columns_to_extract, col_to_filter, criteria_to_remove, columns_to_rename, label_columns
 
 class Data():
     def __init__(self, server_address, database_name):
@@ -119,3 +119,5 @@ class Data():
         for col in cleaned.columns[cleaned.isnull().any()]: cleaned[col].fillna(cleaned[col].mode().iloc[0])
         
         return cleaned
+    
+    
