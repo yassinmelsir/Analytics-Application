@@ -36,3 +36,6 @@ graph_type = 'Information'
 
 #initialization
 next_screen = 'initial'
+
+#analysis
+selected_groups = None

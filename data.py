@@ -50,6 +50,7 @@ class Data():
         results = collection.find()
         formatted_results = list(results)
         self.data, self.working_data = pd.DataFrame(formatted_results), pd.DataFrame(formatted_results)
+        self.groups_to_extract = self.working_data['EID'].unique()
         client.close() 
         
     def get_data_from_csv(self, filePaths):

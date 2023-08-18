@@ -23,7 +23,7 @@ class Analysis(Screen):
         print('Graph Data:', graph_data)
         
         self.root.mainloop()
-
+        
     def buttons(self):
         global selected_visualization, checkbox_variables, graph_type
         frame = tk.Frame(self.root)
@@ -61,16 +61,23 @@ class Analysis(Screen):
         
         save = tk.Button(frame,text='Save to Database', command=self.on_save_to_database)
         save.pack(side=tk.RIGHT, fill=tk.BOTH)
+    def regraph(self):
+        self.regraph_information() if graph_type == 'Information' else self.regraph_correlation()
         
     def update_visualization(self):
         global graph_type
         graph_type = selected_visualization.get()
-        self.controller.show_visualization()
+        self.regraph()
 
     def update_data_range(self):
         selected_groups = [group for group, selected in checkbox_variables.items() if selected.get()]
-        self.working_data = self.working_data[self.data.get_data()['EID'].isin(selected_groups)]
-        self.controller.show_analysis()
+        self.working_data = self.data.get_working_data()
+        if len(selected_groups) > 0:
+            self.working_data = self.working_data[self.working_data['EID'].isin(selected_groups)]
+        else: self.working_data = pd.DataFrame(columns=self.working_data.columns)
+        self.gen_graph_data()
+        self.regraph()
+        # regen statistics
 
     def information_graph(self):
         # plot x:longitude-y:latitude-l:site-c:multiplex, plot x:Freq-y:Label-l:Block-c:multiplex 

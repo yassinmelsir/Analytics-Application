@@ -24,7 +24,7 @@ class Screen():
         def on_click():
             self.data.load_from_database(listbox.get(listbox.curselection()))
             # if data exists
-            if self.data_exists(): self.controller.show_cleaning()
+            if self.data_exists(): self.controller.show_analysis()
             else: 
                 self.popup_dialog('Error','Did Not Load')
                 dialog.destroy()
